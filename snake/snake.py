@@ -13,9 +13,9 @@ TILE = 12
 HUD_Y = HEIGHT * TILE
 # Milliseconds per move. Five apples unlock each faster level.
 # These are Wedgie tuning values, not measured Nokia firmware timings.
-SPEED_MS = (90, 230, 210, 190, 170, 150, 135, 120, 110, 100)
+SPEED_MS = (230, 210, 190, 170, 150, 135, 120, 110, 100, 90)
 FRAME_MS = 25
-WALL_GRACE_MS = 120  # Allow a last-second 90-degree turn at a wall.
+WALL_GRACE_MS = 100  # Allow a last-second 90-degree turn at a wall.
 BG = color(13, 23, 15)
 HEAD = color(110, 255, 75)
 BODY = color(35, 195, 65)
