@@ -123,6 +123,9 @@ class Game:
         self.head_index = (self.head_index + 1) % CELLS
         self.cells[self.head_index] = next_cell
         self.occupied[next_cell] = 1
+        if ate and self.growth_pending:
+            # Red food adds one more future growth when already growing.
+            self.growth_pending += 1
         if ate_gold:
             self.gold = -1
             self.growth_pending += GOLD_GROWTH - 1
@@ -426,6 +429,9 @@ def run():
                     draw_apple(lcd, game.apple)
                     if game.gold < 0 and random.randrange(100) < GOLD_CHANCE:
                         game.gold = game.new_apple(game.apple)
+                        if game.gold == old_tip:
+                            # Avoid covering the forked tongue in front of the head.
+                            game.gold = -1
                         if game.gold >= 0:
                             game.gold_deadline = time.ticks_add(now, GOLD_LIFETIME_MS)
                             draw_gold(lcd, game.gold)
