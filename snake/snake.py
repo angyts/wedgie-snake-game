@@ -67,7 +67,7 @@ class Game:
 
     def turn(self, key):
         proposed = DIRECTIONS.get(key)
-        if proposed is not None and self.pending is None and proposed != -self.direction:
+        if proposed is not None and self.pending is None and proposed != -self.direction and proposed != self.direction:
             self.pending = proposed
 
     def step(self):
