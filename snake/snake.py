@@ -141,31 +141,57 @@ def tile(lcd, cell, ink):
 
 
 def head(lcd, cell, direction):
-    """Draw a 12-pixel head with two eyes and a tiny tongue.
-
-    Details stay inside the head tile, so only one tile needs refreshing.
-    """
+    """Draw the face and the base of the forked tongue inside the head."""
     tile(lcd, cell, HEAD)
     x = (cell % WIDTH) * TILE
     y = (cell // WIDTH) * TILE
 
-    # Eye positions are relative to the direction the snake faces.
     if direction == RIGHT:
         eyes = ((7, 2), (7, 8))
-        tongue = (10, 5)
+        base = (10, 5, 2, 2)
     elif direction == LEFT:
         eyes = ((3, 2), (3, 8))
-        tongue = (0, 5)
+        base = (0, 5, 2, 2)
     elif direction == UP:
         eyes = ((2, 3), (8, 3))
-        tongue = (5, 0)
-    else:  # DOWN
+        base = (5, 0, 2, 2)
+    else:
         eyes = ((2, 7), (8, 7))
-        tongue = (5, 10)
+        base = (5, 10, 2, 2)
 
     for ex, ey in eyes:
         lcd.fill_rect(x + ex, y + ey, 2, 2, EYE)
-    lcd.fill_rect(x + tongue[0], y + tongue[1], 2, 2, TONGUE)
+    lcd.fill_rect(x + base[0], y + base[1], base[2], base[3], TONGUE)
+
+
+def tongue_tip(lcd, game):
+    """Fork one pixel into the free cell ahead. Return that cell or None.
+
+    Do not paint over the apple, body, walls, or the score strip.
+    """
+    cell = game.cells[game.head_index]
+    direction = game.direction
+    if hits_wall(game, direction):
+        return None
+
+    ahead = cell + direction
+    if game.occupied[ahead] or ahead == game.apple:
+        return None
+
+    x = (ahead % WIDTH) * TILE
+    y = (ahead // WIDTH) * TILE
+    if direction == RIGHT:
+        tips = ((0, 4), (0, 7))
+    elif direction == LEFT:
+        tips = ((11, 4), (11, 7))
+    elif direction == UP:
+        tips = ((4, 11), (7, 11))
+    else:
+        tips = ((4, 0), (7, 0))
+
+    for tx, ty in tips:
+        lcd.fill_rect(x + tx, y + ty, 1, 1, TONGUE)
+    return ahead
 
 
 def tail(lcd, cell, neighbor):
@@ -231,7 +257,9 @@ def initial_draw(lcd, game):
             head(lcd, cell, game.direction)
         else:
             tile(lcd, cell, BODY)
-    draw_apple(lcd, game.apple)
+    if game.apple >= 0:
+        draw_apple(lcd, game.apple)
+    tongue_tip(lcd, game)
     draw_hud(lcd, game)
     lcd.show()
 
@@ -265,6 +293,12 @@ def run():
         last_move = time.ticks_ms()
         paused = False
         wall_deadline = None
+        previous_tip = None
+        # The initial full draw includes the protruding tongue.
+        if not hits_wall(game, game.direction):
+            ahead = game.cells[game.head_index] + game.direction
+            if not game.occupied[ahead] and ahead != game.apple:
+                previous_tip = ahead
         while not game.over:
             for key in keys.pressed():
                 if key == 'Y':
@@ -278,6 +312,11 @@ def run():
                         lcd.show()
                     else:
                         initial_draw(lcd, game)
+                        previous_tip = None
+                        if not hits_wall(game, game.direction):
+                            ahead = game.cells[game.head_index] + game.direction
+                            if not game.occupied[ahead] and ahead != game.apple:
+                                previous_tip = ahead
                         last_move = time.ticks_ms()
                         if wall_deadline is not None:
                             wall_deadline = time.ticks_add(last_move, WALL_GRACE_MS)
@@ -310,8 +349,13 @@ def run():
             last_move = now
             removed, old_head, new_head, ate, _ = game.step()
             if new_head is not None:
-                # First update the framebuffer, then send each changed tile once.
-                # In particular, the new head must win if it enters the old tail.
+                # Remove the previous tongue's two outside pixels first.
+                # It may be in a different cell if the snake just turned.
+                old_tip = previous_tip
+                if old_tip is not None:
+                    tile(lcd, old_tip, BG)
+
+                # Update the framebuffer, then send each changed tile once.
                 tile(lcd, old_head, BODY)
                 if removed is not None and removed != new_head:
                     tile(lcd, removed, BG)
@@ -322,8 +366,11 @@ def run():
                 tail(lcd, tail_cell, next_body)
                 head(lcd, new_head, game.direction)
 
-                # Flush only tiles that changed, without duplicates.
-                changed = (old_head, removed, tail_cell, new_head)
+                # The new tongue may reach one pixel into the next free cell.
+                previous_tip = tongue_tip(lcd, game)
+
+                # Flush only changed tiles, including the old/new tongue cells.
+                changed = (old_head, removed, tail_cell, new_head, old_tip, previous_tip)
                 for i, cell in enumerate(changed):
                     if cell is not None and cell not in changed[:i]:
                         push(lcd, cell)
