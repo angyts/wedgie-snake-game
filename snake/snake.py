@@ -15,6 +15,9 @@ HUD_Y = HEIGHT * TILE
 # These are Wedgie tuning values, not measured Nokia firmware timings.
 SPEED_MS = (230, 210, 190, 170, 150, 135, 120, 110, 100, 90)
 FRAME_MS = 25
+GOLD_CHANCE = 10
+GOLD_LIFETIME_MS = 6000
+GOLD_GROWTH = 5
 WALL_GRACE_MS = 100  # Allow a last-second 90-degree turn at a wall.
 BG = color(13, 23, 15)
 HEAD = color(110, 255, 75)
@@ -24,6 +27,9 @@ APPLE_SHADE = color(180, 28, 35)
 APPLE_SHINE = color(255, 220, 180)
 APPLE_LEAF = color(35, 195, 65)
 APPLE_STEM = color(95, 60, 30)
+GOLD = color(255, 205, 35)
+GOLD_SHADE = color(180, 125, 20)
+GOLD_SHINE = color(255, 245, 185)
 HUD_BG = color(8, 10, 24)
 EYE = color(8, 20, 10)
 TONGUE = color(255, 100, 135)
@@ -58,14 +64,20 @@ class Game:
         self.over = False
         self.won = False
         self.apple = self.new_apple()
+        self.gold = -1
+        self.gold_deadline = None
+        self.growth_pending = 0
+        self.red_eaten = 0
 
-    def new_apple(self):
+    def new_apple(self, exclude=-1):
         available = CELLS - self.length
+        if exclude >= 0 and not self.occupied[exclude]:
+            available -= 1
         if available == 0:
             return -1
         target = random.randrange(available)
         for cell in range(CELLS):
-            if not self.occupied[cell]:
+            if not self.occupied[cell] and cell != exclude:
                 if target == 0:
                     return cell
                 target -= 1
@@ -93,26 +105,37 @@ class Game:
             return (None, old_head, None, False, True)
         next_cell = ny * WIDTH + nx
         ate = next_cell == self.apple
+        ate_gold = next_cell == self.gold
+        growing = ate or ate_gold or self.growth_pending > 0
         old_tail = self.cells[self.tail_index]
-        if self.occupied[next_cell] and (ate or next_cell != old_tail):
+        if self.occupied[next_cell] and (growing or next_cell != old_tail):
             self.over = True
             return (None, old_head, None, False, True)
         removed = None
-        if not ate:
+        if not growing:
             removed = old_tail
             self.occupied[old_tail] = 0
             self.tail_index = (self.tail_index + 1) % CELLS
         else:
             self.length += 1
+            if self.growth_pending:
+                self.growth_pending -= 1
         self.head_index = (self.head_index + 1) % CELLS
         self.cells[self.head_index] = next_cell
         self.occupied[next_cell] = 1
+        if ate_gold:
+            self.gold = -1
+            self.growth_pending += GOLD_GROWTH - 1
         if ate:
-            self.apple = self.new_apple()
+            self.red_eaten += 1
+            self.apple = self.new_apple(self.gold)
             if self.apple < 0:
                 self.won = True
                 self.over = True
-        return (removed, old_head, next_cell, ate, self.over)
+        if self.length == CELLS:
+            self.won = True
+            self.over = True
+        return (removed, old_head, next_cell, growing, self.over)
 
 
 def speed_level(length):
