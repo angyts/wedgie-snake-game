@@ -95,3 +95,14 @@ Derived from the user-supplied wedgie-code and wedgie-virtual documents.
 - Each move clears the previous protruding tongue and redraws it at the new position; both affected cells are included in the partial display flush.
 - Pause/resume and initial drawing must also show the tongue.
 - Test near walls, food, body, turns, and after pause/resume on physical hardware.
+
+## Optional golden apple (v0.9 draft)
+
+- Eating a normal red apple has a 10% chance to spawn one golden apple, if none is present.
+- Gold appears in a random free cell other than the red apple and lasts 6000 ms of unpaused game time.
+- Gold is optional: the red apple remains on screen and can be eaten normally.
+- Eating gold adds five segments total: one immediately, four on subsequent moves. Further food during growth adds to pending growth.
+- Gold expiry changes only its tile; pause freezes its deadline. No periodic full-screen redraws.
+- Gold is never placed on a snake segment, the red apple, or the protruding tongue.
+- High score remains the final snake length and is saved only at game over if improved or absent.
+- Hardware tests pending: simultaneous apples, expiry, pause, turning, gradual growth, and repeated red apples while growing.
