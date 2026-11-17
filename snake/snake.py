@@ -21,6 +21,8 @@ HEAD = color(110, 255, 75)
 BODY = color(35, 195, 65)
 APPLE = color(245, 65, 55)
 HUD_BG = color(8, 10, 24)
+EYE = color(8, 20, 10)
+TONGUE = color(255, 100, 135)
 
 UP, RIGHT, DOWN, LEFT = -WIDTH, 1, WIDTH, -1
 DIRECTIONS = {"up": UP, "right": RIGHT, "down": DOWN, "left": LEFT}
@@ -134,6 +136,34 @@ def tile(lcd, cell, ink):
     lcd.fill_rect((cell % WIDTH) * TILE, (cell // WIDTH) * TILE, TILE, TILE, ink)
 
 
+def head(lcd, cell, direction):
+    """Draw a 12-pixel head with two eyes and a tiny tongue.
+
+    Details stay inside the head tile, so only one tile needs refreshing.
+    """
+    tile(lcd, cell, HEAD)
+    x = (cell % WIDTH) * TILE
+    y = (cell // WIDTH) * TILE
+
+    # Eye positions are relative to the direction the snake faces.
+    if direction == RIGHT:
+        eyes = ((7, 2), (7, 8))
+        tongue = (10, 5)
+    elif direction == LEFT:
+        eyes = ((3, 2), (3, 8))
+        tongue = (0, 5)
+    elif direction == UP:
+        eyes = ((2, 3), (8, 3))
+        tongue = (5, 0)
+    else:  # DOWN
+        eyes = ((2, 7), (8, 7))
+        tongue = (5, 10)
+
+    for ex, ey in eyes:
+        lcd.fill_rect(x + ex, y + ey, 2, 2, EYE)
+    lcd.fill_rect(x + tongue[0], y + tongue[1], 2, 2, TONGUE)
+
+
 def push(lcd, cell):
     lcd.show_rect((cell % WIDTH) * TILE, (cell // WIDTH) * TILE, TILE, TILE)
 
@@ -155,7 +185,10 @@ def initial_draw(lcd, game):
     lcd.fill(BG)
     for i in range(game.length):
         cell = game.cells[(game.tail_index + i) % CELLS]
-        tile(lcd, cell, HEAD if i == game.length - 1 else BODY)
+        if i == game.length - 1:
+            head(lcd, cell, game.direction)
+        else:
+            tile(lcd, cell, BODY)
     tile(lcd, game.apple, APPLE)
     draw_hud(lcd, game)
     lcd.show()
@@ -235,12 +268,15 @@ def run():
             last_move = now
             removed, old_head, new_head, ate, _ = game.step()
             if new_head is not None:
+                # First update the framebuffer, then send each changed tile once.
+                # In particular, the new head must win if it enters the old tail.
                 tile(lcd, old_head, BODY)
                 if removed is not None and removed != new_head:
                     tile(lcd, removed, BG)
-                tile(lcd, new_head, HEAD)
+                head(lcd, new_head, game.direction)
+
                 push(lcd, old_head)
-                if removed is not None and removed != new_head and removed != old_head:
+                if removed is not None and removed != old_head and removed != new_head:
                     push(lcd, removed)
                 if new_head != old_head:
                     push(lcd, new_head)
