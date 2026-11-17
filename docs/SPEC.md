@@ -87,3 +87,11 @@ Derived from the user-supplied wedgie-code and wedgie-virtual documents.
 - On growth, retain the tail and draw a fresh apple on an unoccupied cell.
 - The initial screen and pause/resume redraw use the same sprites.
 - Test corners, eating, growth, and moving into a vacated tail cell on physical Wedgie.
+
+## Forked tongue (v0.8)
+
+- The head keeps a two-pixel tongue base, plus two separate one-pixel fork tips extending into the immediately adjacent tile in its facing direction.
+- The tongue never draws beyond walls or over an apple or occupied snake tile.
+- Each move clears the previous protruding tongue and redraws it at the new position; both affected cells are included in the partial display flush.
+- Pause/resume and initial drawing must also show the tongue.
+- Test near walls, food, body, turns, and after pause/resume on physical hardware.
