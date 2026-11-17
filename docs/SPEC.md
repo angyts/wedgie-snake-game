@@ -50,3 +50,14 @@ A minimal Nokia-inspired Snake game for Wedgie, with green snake, red apple, and
 
 ## Source
 Derived from the user-supplied wedgie-code and wedgie-virtual documents.
+
+## Wall-turn grace (v0.4)
+
+- If the next movement would cross a wall, hold the snake at its current cell for up to 120 ms.
+- A legal perpendicular joystick turn during that window moves the snake immediately, without moving into the wall.
+- If the window expires, the round ends normally.
+- This applies only to walls, not collisions with the snake's own body.
+- A pause freezes the game; resuming starts a fresh 120 ms grace window if one was active.
+- No display update or save write is needed during the grace period.
+- This is a playability choice inspired by accounts of the original Nokia game, not a verified Nokia timing value.
+- Hardware acceptance tests: late turn succeeds, no turn dies, reversal fails, self-collision still kills, pause/resume works at a wall.
