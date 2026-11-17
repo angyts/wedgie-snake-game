@@ -15,6 +15,7 @@ HUD_Y = HEIGHT * TILE
 # These are Wedgie tuning values, not measured Nokia firmware timings.
 SPEED_MS = (250, 230, 210, 190, 170, 150, 135, 120, 110, 100)
 FRAME_MS = 25
+WALL_GRACE_MS = 120  # Allow a last-second 90-degree turn at a wall.
 BG = color(13, 23, 15)
 HEAD = color(110, 255, 75)
 BODY = color(35, 195, 65)
@@ -115,6 +116,17 @@ def move_interval(length):
     return SPEED_MS[level]
 
 
+def hits_wall(game, direction):
+    """Would the next movement leave the board?"""
+    head = game.cells[game.head_index]
+    x = head % WIDTH
+    y = head // WIDTH
+    return ((direction == LEFT and x == 0)
+            or (direction == RIGHT and x == WIDTH - 1)
+            or (direction == UP and y == 0)
+            or (direction == DOWN and y == HEIGHT - 1))
+
+
 def tile(lcd, cell, ink):
     lcd.fill_rect((cell % WIDTH) * TILE, (cell // WIDTH) * TILE, TILE, TILE, ink)
 
@@ -170,6 +182,7 @@ def run():
         initial_draw(lcd, game)
         last_move = time.ticks_ms()
         paused = False
+        wall_deadline = None
         while not game.over:
             for key in keys.pressed():
                 if key == 'Y':
@@ -179,31 +192,52 @@ def run():
                     else:
                         initial_draw(lcd, game)
                         last_move = time.ticks_ms()
+                        if wall_deadline is not None:
+                            wall_deadline = time.ticks_add(last_move, WALL_GRACE_MS)
                 elif not paused:
                     game.turn(key)
             if paused:
                 time.sleep_ms(FRAME_MS)
                 continue
             now = time.ticks_ms()
-            if time.ticks_diff(now, last_move) >= move_interval(game.length):
-                last_move = now
-                removed, old_head, new_head, ate, _ = game.step()
-                if new_head is not None:
-                    tile(lcd, old_head, BODY)
-                    if removed is not None and removed != new_head:
-                        tile(lcd, removed, BG)
-                    tile(lcd, new_head, HEAD)
-                    push(lcd, old_head)
-                    if removed is not None and removed != new_head and removed != old_head:
-                        push(lcd, removed)
-                    if new_head != old_head:
-                        push(lcd, new_head)
-                    if ate:
-                        if game.apple >= 0:
-                            tile(lcd, game.apple, APPLE)
-                            push(lcd, game.apple)
-                        if game.length > game.best:
-                            game.best = game.length
-                        hud(lcd, game)
+            if wall_deadline is not None:
+                # A wall is imminent. Give the player one last chance to turn.
+                if game.pending is not None and not hits_wall(game, game.pending):
+                    wall_deadline = None
+                elif time.ticks_diff(now, wall_deadline) >= 0:
+                    game.over = True
+                    continue
+                else:
+                    time.sleep_ms(FRAME_MS)
+                    continue
+            elif time.ticks_diff(now, last_move) >= move_interval(game.length):
+                direction = game.pending if game.pending is not None else game.direction
+                if hits_wall(game, direction):
+                    wall_deadline = time.ticks_add(now, WALL_GRACE_MS)
+                    time.sleep_ms(FRAME_MS)
+                    continue
+            else:
+                time.sleep_ms(FRAME_MS)
+                continue
+
+            last_move = now
+            removed, old_head, new_head, ate, _ = game.step()
+            if new_head is not None:
+                tile(lcd, old_head, BODY)
+                if removed is not None and removed != new_head:
+                    tile(lcd, removed, BG)
+                tile(lcd, new_head, HEAD)
+                push(lcd, old_head)
+                if removed is not None and removed != new_head and removed != old_head:
+                    push(lcd, removed)
+                if new_head != old_head:
+                    push(lcd, new_head)
+                if ate:
+                    if game.apple >= 0:
+                        tile(lcd, game.apple, APPLE)
+                        push(lcd, game.apple)
+                    if game.length > game.best:
+                        game.best = game.length
+                    hud(lcd, game)
             time.sleep_ms(FRAME_MS)
         finish(lcd, keys, game)
