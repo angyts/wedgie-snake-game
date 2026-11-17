@@ -20,6 +20,10 @@ BG = color(13, 23, 15)
 HEAD = color(110, 255, 75)
 BODY = color(35, 195, 65)
 APPLE = color(245, 65, 55)
+APPLE_SHADE = color(180, 28, 35)
+APPLE_SHINE = color(255, 220, 180)
+APPLE_LEAF = color(35, 195, 65)
+APPLE_STEM = color(95, 60, 30)
 HUD_BG = color(8, 10, 24)
 EYE = color(8, 20, 10)
 TONGUE = color(255, 100, 135)
@@ -164,6 +168,41 @@ def head(lcd, cell, direction):
     lcd.fill_rect(x + tongue[0], y + tongue[1], 2, 2, TONGUE)
 
 
+def tail(lcd, cell, neighbor):
+    """Draw a tapered tail pointing away from the next body segment."""
+    tile(lcd, cell, BG)
+    x = (cell % WIDTH) * TILE
+    y = (cell // WIDTH) * TILE
+    dx = (neighbor % WIDTH) - (cell % WIDTH)
+    dy = (neighbor // WIDTH) - (cell // WIDTH)
+
+    if dx == 1:  # Body continues to the right.
+        lcd.fill_rect(x + 5, y + 3, 7, 6, BODY)
+        lcd.fill_rect(x + 2, y + 5, 3, 2, BODY)
+    elif dx == -1:
+        lcd.fill_rect(x, y + 3, 7, 6, BODY)
+        lcd.fill_rect(x + 7, y + 5, 3, 2, BODY)
+    elif dy == 1:
+        lcd.fill_rect(x + 3, y + 5, 6, 7, BODY)
+        lcd.fill_rect(x + 5, y + 2, 2, 3, BODY)
+    else:
+        lcd.fill_rect(x + 3, y, 6, 7, BODY)
+        lcd.fill_rect(x + 5, y + 7, 2, 3, BODY)
+
+
+def draw_apple(lcd, cell):
+    """Draw a tiny red apple with a leaf, stem and highlight."""
+    tile(lcd, cell, BG)
+    x = (cell % WIDTH) * TILE
+    y = (cell // WIDTH) * TILE
+    lcd.fill_rect(x + 3, y + 4, 7, 7, APPLE_SHADE)
+    lcd.fill_rect(x + 2, y + 5, 8, 5, APPLE)
+    lcd.fill_rect(x + 4, y + 3, 5, 7, APPLE)
+    lcd.fill_rect(x + 5, y + 1, 2, 3, APPLE_STEM)
+    lcd.fill_rect(x + 7, y + 1, 3, 2, APPLE_LEAF)
+    lcd.fill_rect(x + 4, y + 5, 2, 2, APPLE_SHINE)
+
+
 def push(lcd, cell):
     lcd.show_rect((cell % WIDTH) * TILE, (cell // WIDTH) * TILE, TILE, TILE)
 
@@ -185,11 +224,14 @@ def initial_draw(lcd, game):
     lcd.fill(BG)
     for i in range(game.length):
         cell = game.cells[(game.tail_index + i) % CELLS]
-        if i == game.length - 1:
+        if i == 0:
+            neighbor = game.cells[(game.tail_index + 1) % CELLS]
+            tail(lcd, cell, neighbor)
+        elif i == game.length - 1:
             head(lcd, cell, game.direction)
         else:
             tile(lcd, cell, BODY)
-    tile(lcd, game.apple, APPLE)
+    draw_apple(lcd, game.apple)
     draw_hud(lcd, game)
     lcd.show()
 
@@ -273,16 +315,21 @@ def run():
                 tile(lcd, old_head, BODY)
                 if removed is not None and removed != new_head:
                     tile(lcd, removed, BG)
+
+                # The tail's tapered shape must follow the new tail position.
+                tail_cell = game.cells[game.tail_index]
+                next_body = game.cells[(game.tail_index + 1) % CELLS]
+                tail(lcd, tail_cell, next_body)
                 head(lcd, new_head, game.direction)
 
-                push(lcd, old_head)
-                if removed is not None and removed != old_head and removed != new_head:
-                    push(lcd, removed)
-                if new_head != old_head:
-                    push(lcd, new_head)
+                # Flush only tiles that changed, without duplicates.
+                changed = (old_head, removed, tail_cell, new_head)
+                for i, cell in enumerate(changed):
+                    if cell is not None and cell not in changed[:i]:
+                        push(lcd, cell)
                 if ate:
                     if game.apple >= 0:
-                        tile(lcd, game.apple, APPLE)
+                        draw_apple(lcd, game.apple)
                         push(lcd, game.apple)
                     if game.length > game.best:
                         game.best = game.length
