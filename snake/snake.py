@@ -111,6 +111,9 @@ class Game:
         if self.occupied[next_cell] and (growing or next_cell != old_tail):
             self.over = True
             return (None, old_head, None, False, True)
+        if ate and self.growth_pending:
+            # Eating red food while growing adds another future segment.
+            self.growth_pending += 1
         removed = None
         if not growing:
             removed = old_tail
@@ -123,9 +126,6 @@ class Game:
         self.head_index = (self.head_index + 1) % CELLS
         self.cells[self.head_index] = next_cell
         self.occupied[next_cell] = 1
-        if ate and self.growth_pending:
-            # Red food adds one more future growth when already growing.
-            self.growth_pending += 1
         if ate_gold:
             self.gold = -1
             self.growth_pending += GOLD_GROWTH - 1
