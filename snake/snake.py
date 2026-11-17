@@ -109,11 +109,14 @@ class Game:
         return (removed, old_head, next_cell, ate, self.over)
 
 
+def speed_level(length):
+    """Speed level 1-10, increasing every five apples."""
+    return min((length - 3) // 5, len(SPEED_MS) - 1) + 1
+
+
 def move_interval(length):
     """Return the movement interval for this snake length."""
-    apples_eaten = length - 3
-    level = min(apples_eaten // 5, len(SPEED_MS) - 1)
-    return SPEED_MS[level]
+    return SPEED_MS[speed_level(length) - 1]
 
 
 def hits_wall(game, direction):
@@ -135,10 +138,16 @@ def push(lcd, cell):
     lcd.show_rect((cell % WIDTH) * TILE, (cell // WIDTH) * TILE, TILE, TILE)
 
 
-def hud(lcd, game):
+def draw_hud(lcd, game):
+    """Draw the status strip into the framebuffer."""
     lcd.fill_rect(0, HUD_Y, 240, 12, HUD_BG)
-    lcd.text('LEN %03d' % game.length, 2, HUD_Y + 2, ui.WHITE)
-    lcd.text('BEST %03d' % game.best, 137, HUD_Y + 2, ui.WHITE)
+    lcd.text('SNAKE LENGTH %03d' % game.length, 0, HUD_Y + 2, ui.WHITE)
+    lcd.text('LV%d' % speed_level(game.length), 134, HUD_Y + 2, ui.WHITE)
+    lcd.text('BEST %03d' % game.best, 172, HUD_Y + 2, ui.WHITE)
+
+
+def hud(lcd, game):
+    draw_hud(lcd, game)
     lcd.show(HUD_Y, 240)
 
 
@@ -148,9 +157,7 @@ def initial_draw(lcd, game):
         cell = game.cells[(game.tail_index + i) % CELLS]
         tile(lcd, cell, HEAD if i == game.length - 1 else BODY)
     tile(lcd, game.apple, APPLE)
-    lcd.fill_rect(0, HUD_Y, 240, 12, HUD_BG)
-    lcd.text('LEN %03d' % game.length, 2, HUD_Y + 2, ui.WHITE)
-    lcd.text('BEST %03d' % game.best, 137, HUD_Y + 2, ui.WHITE)
+    draw_hud(lcd, game)
     lcd.show()
 
 
@@ -188,7 +195,12 @@ def run():
                 if key == 'Y':
                     paused = not paused
                     if paused:
-                        ui.page(lcd, 'Paused', [('Length %d' % game.length, ui.INK)], '{r} resume')
+                        ui.page(lcd, 'PAUSED',
+                                [('Snake length %d' % game.length, ui.INK)],
+                                '{r} resume', show=False)
+                        # Keep the standard Wedgie page, but make PAUSED red.
+                        ui.title(lcd, 'PAUSED', 72, c=ui.RED)
+                        lcd.show()
                     else:
                         initial_draw(lcd, game)
                         last_move = time.ticks_ms()
