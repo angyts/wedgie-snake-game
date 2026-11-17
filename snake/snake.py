@@ -141,7 +141,7 @@ def push(lcd, cell):
 def draw_hud(lcd, game):
     """Draw the status strip into the framebuffer."""
     lcd.fill_rect(0, HUD_Y, 240, 12, HUD_BG)
-    lcd.text('SNAKE LENGTH %03d' % game.length, 0, HUD_Y + 2, ui.WHITE)
+    lcd.text('LENGTH %03d' % game.length, 0, HUD_Y + 2, ui.WHITE)
     lcd.text('LV%d' % speed_level(game.length), 134, HUD_Y + 2, ui.WHITE)
     lcd.text('BEST %03d' % game.best, 172, HUD_Y + 2, ui.WHITE)
 
