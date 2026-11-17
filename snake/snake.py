@@ -11,7 +11,9 @@ HEIGHT = 19
 CELLS = WIDTH * HEIGHT
 TILE = 12
 HUD_Y = HEIGHT * TILE
-STEP_MS = 250
+# Milliseconds per move. Five apples unlock each faster level.
+# These are Wedgie tuning values, not measured Nokia firmware timings.
+SPEED_MS = (250, 230, 210, 190, 170, 150, 135, 120, 110, 100)
 FRAME_MS = 25
 BG = color(13, 23, 15)
 HEAD = color(110, 255, 75)
@@ -106,6 +108,13 @@ class Game:
         return (removed, old_head, next_cell, ate, self.over)
 
 
+def move_interval(length):
+    """Return the movement interval for this snake length."""
+    apples_eaten = length - 3
+    level = min(apples_eaten // 5, len(SPEED_MS) - 1)
+    return SPEED_MS[level]
+
+
 def tile(lcd, cell, ink):
     lcd.fill_rect((cell % WIDTH) * TILE, (cell // WIDTH) * TILE, TILE, TILE, ink)
 
@@ -176,7 +185,7 @@ def run():
                 time.sleep_ms(FRAME_MS)
                 continue
             now = time.ticks_ms()
-            if time.ticks_diff(now, last_move) >= STEP_MS:
+            if time.ticks_diff(now, last_move) >= move_interval(game.length):
                 last_move = now
                 removed, old_head, new_head, ate, _ = game.step()
                 if new_head is not None:
