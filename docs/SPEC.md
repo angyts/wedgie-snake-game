@@ -78,3 +78,12 @@ Derived from the user-supplied wedgie-code and wedgie-virtual documents.
 - On entry into a vacated tail cell, draw the new head last; never erase or overwrite it with the old tail.
 - The first screen and resume redraw must use the same head sprite as movement.
 - Check all four directions and tight turns on real hardware.
+
+## Pixel-art apple and tail (v0.7)
+
+- Apple is a 12 x 12 tile with a red body, darker shading, small light highlight, brown stem, and green leaf.
+- The tail tapers toward its free end and rotates based on the adjacent body cell.
+- On each normal move, redraw the new tail (because the taper moves), old head, new head, and erased old tail. Push only unique changed 12 x 12 rectangles.
+- On growth, retain the tail and draw a fresh apple on an unoccupied cell.
+- The initial screen and pause/resume redraw use the same sprites.
+- Test corners, eating, growth, and moving into a vacated tail cell on physical Wedgie.
