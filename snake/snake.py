@@ -252,6 +252,19 @@ def draw_apple(lcd, cell):
     lcd.fill_rect(x + 4, y + 5, 2, 2, APPLE_SHINE)
 
 
+def draw_gold(lcd, cell):
+    """Draw a golden apple, matching the red apple's silhouette."""
+    tile(lcd, cell, BG)
+    x = (cell % WIDTH) * TILE
+    y = (cell // WIDTH) * TILE
+    lcd.fill_rect(x + 3, y + 4, 7, 7, GOLD_SHADE)
+    lcd.fill_rect(x + 2, y + 5, 8, 5, GOLD)
+    lcd.fill_rect(x + 4, y + 3, 5, 7, GOLD)
+    lcd.fill_rect(x + 5, y + 1, 2, 3, APPLE_STEM)
+    lcd.fill_rect(x + 7, y + 1, 3, 2, APPLE_LEAF)
+    lcd.fill_rect(x + 4, y + 5, 2, 2, GOLD_SHINE)
+
+
 def push(lcd, cell):
     lcd.show_rect((cell % WIDTH) * TILE, (cell // WIDTH) * TILE, TILE, TILE)
 
@@ -282,6 +295,8 @@ def initial_draw(lcd, game):
             tile(lcd, cell, BODY)
     if game.apple >= 0:
         draw_apple(lcd, game.apple)
+    if game.gold >= 0:
+        draw_gold(lcd, game.gold)
     tongue_tip(lcd, game)
     draw_hud(lcd, game)
     lcd.show()
@@ -316,6 +331,7 @@ def run():
         last_move = time.ticks_ms()
         paused = False
         wall_deadline = None
+        gold_paused_at = None
         previous_tip = None
         # The initial full draw includes the protruding tongue.
         if not hits_wall(game, game.direction):
@@ -327,6 +343,7 @@ def run():
                 if key == 'Y':
                     paused = not paused
                     if paused:
+                        gold_paused_at = time.ticks_ms()
                         ui.page(lcd, 'PAUSED',
                                 [('Snake length %d' % game.length, ui.INK)],
                                 '{r} resume', show=False)
@@ -334,6 +351,10 @@ def run():
                         ui.title(lcd, 'PAUSED', 72, c=ui.RED)
                         lcd.show()
                     else:
+                        if game.gold >= 0 and gold_paused_at is not None:
+                            elapsed = time.ticks_diff(time.ticks_ms(), gold_paused_at)
+                            game.gold_deadline = time.ticks_add(game.gold_deadline, elapsed)
+                        gold_paused_at = None
                         initial_draw(lcd, game)
                         previous_tip = None
                         if not hits_wall(game, game.direction):
@@ -349,6 +370,14 @@ def run():
                 time.sleep_ms(FRAME_MS)
                 continue
             now = time.ticks_ms()
+            if game.gold >= 0 and time.ticks_diff(now, game.gold_deadline) >= 0:
+                expired = game.gold
+                game.gold = -1
+                game.gold_deadline = None
+                tile(lcd, expired, BG)
+                if previous_tip == expired:
+                    previous_tip = tongue_tip(lcd, game)
+                push(lcd, expired)
             if wall_deadline is not None:
                 # A wall is imminent. Give the player one last chance to turn.
                 if game.pending is not None and not hits_wall(game, game.pending):
@@ -370,7 +399,9 @@ def run():
                 continue
 
             last_move = now
-            removed, old_head, new_head, ate, _ = game.step()
+            old_gold = game.gold
+            old_red = game.apple
+            removed, old_head, new_head, grew, _ = game.step()
             if new_head is not None:
                 # Remove the previous tongue's two outside pixels first.
                 # It may be in a different cell if the snake just turned.
@@ -389,18 +420,27 @@ def run():
                 tail(lcd, tail_cell, next_body)
                 head(lcd, new_head, game.direction)
 
+                if old_gold >= 0 and game.gold < 0:
+                    game.gold_deadline = None
+                if game.apple >= 0 and game.apple != old_red:
+                    draw_apple(lcd, game.apple)
+                    if game.gold < 0 and random.randrange(100) < GOLD_CHANCE:
+                        game.gold = game.new_apple(game.apple)
+                        if game.gold >= 0:
+                            game.gold_deadline = time.ticks_add(now, GOLD_LIFETIME_MS)
+                            draw_gold(lcd, game.gold)
+
                 # The new tongue may reach one pixel into the next free cell.
                 previous_tip = tongue_tip(lcd, game)
 
                 # Flush only changed tiles, including the old/new tongue cells.
-                changed = (old_head, removed, tail_cell, new_head, old_tip, previous_tip)
+                changed = (old_head, removed, tail_cell, new_head, old_tip, previous_tip,
+                           game.apple if game.apple != old_red else None,
+                           game.gold if game.gold >= 0 and game.gold != old_gold else None)
                 for i, cell in enumerate(changed):
                     if cell is not None and cell not in changed[:i]:
                         push(lcd, cell)
-                if ate:
-                    if game.apple >= 0:
-                        draw_apple(lcd, game.apple)
-                        push(lcd, game.apple)
+                if grew:
                     if game.length > game.best:
                         game.best = game.length
                     hud(lcd, game)
