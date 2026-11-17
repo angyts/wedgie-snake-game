@@ -69,3 +69,12 @@ Derived from the user-supplied wedgie-code and wedgie-virtual documents.
 - The red Y button still toggles pause; the standard pause page displays a red `PAUSED` heading and red-button resume hint.
 - No extra flash writes or per-frame HUD updates.
 - Check the compact HUD labels fit on the 240-pixel display, especially `LV10` and three-digit lengths.
+
+## Directional head sprite (v0.6)
+
+- The head remains a 12 x 12 tile with two dark 2 x 2 eyes and one pink 2 x 2 tongue tip.
+- Eyes and tongue rotate to face UP, DOWN, LEFT, or RIGHT.
+- All details stay within the tile, so ordinary movement still flushes only changed 12 x 12 rectangles.
+- On entry into a vacated tail cell, draw the new head last; never erase or overwrite it with the old tail.
+- The first screen and resume redraw must use the same head sprite as movement.
+- Check all four directions and tight turns on real hardware.
