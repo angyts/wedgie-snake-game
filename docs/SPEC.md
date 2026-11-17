@@ -1,4 +1,4 @@
-# Wedgie Snake — Specification v0.3
+# Wedgie Snake — Specification v0.5
 
 ## Goal
 A minimal Nokia-inspired Snake game for Wedgie, with green snake, red apple, and incremental screen updates.
@@ -11,8 +11,8 @@ A minimal Nokia-inspired Snake game for Wedgie, with green snake, red apple, and
 
 ## Rules and screen
 - 20 columns x 19 rows of 12px cells, plus a 12px bottom score strip.
-- Score strip displays LEN and BEST; refresh only after eating an apple.
-- Starts with length 3, facing right, moving every 250ms.
+- Score strip displays SNAKE LENGTH, LV (speed level), and BEST; refresh only after eating an apple.
+- Starts with length 3, facing right, initially moving every 250ms.
 - One red apple on an empty cell. Each apple adds one segment.
 - Bright green head, darker green body, dark background.
 - Joystick directions only during play; Y toggles pause/resume.
@@ -61,3 +61,11 @@ Derived from the user-supplied wedgie-code and wedgie-virtual documents.
 - No display update or save write is needed during the grace period.
 - This is a playability choice inspired by accounts of the original Nokia game, not a verified Nokia timing value.
 - Hardware acceptance tests: late turn succeeds, no turn dies, reversal fails, self-collision still kills, pause/resume works at a wall.
+
+## HUD and pause styling (v0.5)
+
+- Status strip reads `SNAKE LENGTH 003`, `LV1`, `BEST 003` initially; values update after apples, not every movement.
+- Speed level increases every five apples, from LV1 to LV10, capped at 100 ms per move.
+- The red Y button still toggles pause; the standard pause page displays a red `PAUSED` heading and red-button resume hint.
+- No extra flash writes or per-frame HUD updates.
+- Check the compact HUD labels fit on the 240-pixel display, especially `LV10` and three-digit lengths.
