@@ -436,6 +436,11 @@ def run():
                             game.gold_deadline = time.ticks_add(now, GOLD_LIFETIME_MS)
                             draw_gold(lcd, game.gold)
 
+                # The old tongue tile was cleared above. If the new
+                # red apple spawned there, restore it before flushing.
+                if game.apple >= 0 and game.apple == old_tip:
+                    draw_apple(lcd, game.apple)
+
                 # The new tongue may reach one pixel into the next free cell.
                 previous_tip = tongue_tip(lcd, game)
 
