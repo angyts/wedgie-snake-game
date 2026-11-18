@@ -436,12 +436,17 @@ def run():
                             game.gold_deadline = time.ticks_add(now, GOLD_LIFETIME_MS)
                             draw_gold(lcd, game.gold)
 
+                # Keep the red apple visible even if an earlier partial
+                # redraw touched its tile. Redraw before flushing.
+                if game.apple >= 0:
+                    draw_apple(lcd, game.apple)
+
                 # The new tongue may reach one pixel into the next free cell.
                 previous_tip = tongue_tip(lcd, game)
 
                 # Flush only changed tiles, including the old/new tongue cells.
                 changed = (old_head, removed, tail_cell, new_head, old_tip, previous_tip,
-                           game.apple if game.apple != old_red else None,
+                           game.apple if game.apple >= 0 else None,
                            game.gold if game.gold >= 0 and game.gold != old_gold else None)
                 for i, cell in enumerate(changed):
                     if cell is not None and cell not in changed[:i]:
